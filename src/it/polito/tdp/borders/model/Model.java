@@ -115,7 +115,11 @@ public class Model {
 	}
 
 	public Set<Country> getVertexSet() {
-		return this.graph.vertexSet();
+		if(this.graph == null) {
+			return null;
+		}
+		else
+			return this.graph.vertexSet();
 	}
 	
 	public Map<Integer, Country> getCountryIdMap() {
