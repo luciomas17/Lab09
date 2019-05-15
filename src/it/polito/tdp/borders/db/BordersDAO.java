@@ -5,25 +5,59 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import it.polito.tdp.borders.model.Border;
 import it.polito.tdp.borders.model.Country;
 
 public class BordersDAO {
 
-	public List<Country> loadAllCountries() {
+	public Map<Integer, Country> loadAllCountries() {
 
 		String sql = "SELECT ccode, StateAbb, StateNme FROM country ORDER BY StateAbb";
-		List<Country> result = new ArrayList<Country>();
+		Map<Integer, Country> result = new HashMap<>();
 		
 		try {
 			Connection conn = ConnectDB.getConnection();
 			PreparedStatement st = conn.prepareStatement(sql);
 			ResultSet rs = st.executeQuery();
 
+			while (rs.next())
+				result.put(rs.getInt("ccode"), new Country(rs.getString("StateAbb"), rs.getInt("ccode"), rs.getString("StateNme")));
+			
+			conn.close();
+			return result;
+
+		} catch (SQLException e) {
+			e.printStackTrace();
+			System.out.println("Errore connessione al database");
+			throw new RuntimeException("Error Connection Database");
+		}
+	}
+	
+	public Set<Country> loadCountriesByYear(int year, Map<Integer, Country> countryIdMap) {
+		
+		String sql = "SELECT state1no, state2no " + 
+				"FROM contiguity, country " + 
+				"WHERE year <= ? " + 
+				"GROUP BY state1no, state2no";
+		Set<Country> result = new HashSet<>();
+		
+		try {
+			Connection conn = ConnectDB.getConnection();
+			PreparedStatement st = conn.prepareStatement(sql);
+			st.setInt(1, year);
+			ResultSet rs = st.executeQuery();
+
 			while (rs.next()) {
-				System.out.format("%d %s %s\n", rs.getInt("ccode"), rs.getString("StateAbb"), rs.getString("StateNme"));
+				Country state1 = countryIdMap.get(rs.getInt("state1no"));
+				result.add(state1);
+				Country state2 = countryIdMap.get(rs.getInt("state2no"));
+				result.add(state2);
 			}
 			
 			conn.close();
@@ -36,9 +70,33 @@ public class BordersDAO {
 		}
 	}
 
-	public List<Border> getCountryPairs(int anno) {
+	public List<Border> getCountryPairs(int contType, Map<Integer, Country> countryIdMap) {
+		String sql = "SELECT state1no, state2no, conttype " + 
+				"FROM contiguity, country " + 
+				"WHERE conttype = ? " + 
+				"GROUP BY state1no, state2no";
+		List<Border> result = new ArrayList<>();
+		
+		try {
+			Connection conn = ConnectDB.getConnection();
+			PreparedStatement st = conn.prepareStatement(sql);
+			st.setInt(1, contType);
+			ResultSet rs = st.executeQuery();
 
-		System.out.println("TODO -- BordersDAO -- getCountryPairs(int anno)");
-		return new ArrayList<Border>();
+			while (rs.next()) {
+				Country state1 = countryIdMap.get(rs.getInt("state1no"));
+				Country state2 = countryIdMap.get(rs.getInt("state2no"));
+				
+				result.add(new Border(state1, state2, rs.getInt("conttype")));
+			}
+			
+			conn.close();
+			return result;
+
+		} catch (SQLException e) {
+			e.printStackTrace();
+			System.out.println("Errore connessione al database");
+			throw new RuntimeException("Error Connection Database");
+		}
 	}
 }
