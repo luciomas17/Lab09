@@ -6,11 +6,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-
 import it.polito.tdp.borders.model.Border;
 import it.polito.tdp.borders.model.Country;
 
@@ -39,13 +36,13 @@ public class BordersDAO {
 		}
 	}
 	
-	public Set<Country> loadCountriesByYear(int year, Map<Integer, Country> countryIdMap) {
+	public List<Country> loadCountriesByYear(int year, Map<Integer, Country> countryIdMap) {
 		
 		String sql = "SELECT state1no, state2no " + 
-				"FROM contiguity, country " + 
+				"FROM contiguity " + 
 				"WHERE year <= ? " + 
 				"GROUP BY state1no, state2no";
-		Set<Country> result = new HashSet<>();
+		List<Country> result = new ArrayList<>();
 		
 		try {
 			Connection conn = ConnectDB.getConnection();
@@ -55,9 +52,11 @@ public class BordersDAO {
 
 			while (rs.next()) {
 				Country state1 = countryIdMap.get(rs.getInt("state1no"));
-				result.add(state1);
+				if(!result.contains(state1))
+					result.add(state1);
 				Country state2 = countryIdMap.get(rs.getInt("state2no"));
-				result.add(state2);
+				if(!result.contains(state2))
+					result.add(state2);
 			}
 			
 			conn.close();
@@ -72,7 +71,7 @@ public class BordersDAO {
 
 	public List<Border> getCountryPairs(int contType, Map<Integer, Country> countryIdMap) {
 		String sql = "SELECT state1no, state2no, conttype " + 
-				"FROM contiguity, country " + 
+				"FROM contiguity " + 
 				"WHERE conttype = ? " + 
 				"GROUP BY state1no, state2no";
 		List<Border> result = new ArrayList<>();
