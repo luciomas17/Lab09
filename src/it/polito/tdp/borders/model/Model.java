@@ -1,7 +1,9 @@
 package it.polito.tdp.borders.model;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -9,8 +11,14 @@ import java.util.Set;
 import org.jgrapht.Graph;
 import org.jgrapht.Graphs;
 import org.jgrapht.alg.ConnectivityInspector;
+import org.jgrapht.event.ConnectedComponentTraversalEvent;
+import org.jgrapht.event.EdgeTraversalEvent;
+import org.jgrapht.event.TraversalListener;
+import org.jgrapht.event.VertexTraversalEvent;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleGraph;
+import org.jgrapht.traverse.BreadthFirstIterator;
+import org.jgrapht.traverse.GraphIterator;
 
 import it.polito.tdp.borders.db.BordersDAO;
 
@@ -22,10 +30,41 @@ public class Model {
 			return c1.getStateName().compareTo(c2.getStateName());
 		}
 	}
+	
+	private class EdgeTraversalListener implements TraversalListener<Country, DefaultEdge> {
+
+		@Override
+		public void connectedComponentFinished(ConnectedComponentTraversalEvent arg0) {			
+		}
+
+		@Override
+		public void connectedComponentStarted(ConnectedComponentTraversalEvent arg0) {			
+		}
+
+		@Override
+		public void edgeTraversed(EdgeTraversalEvent<DefaultEdge> e) {
+			Country sourceVertex = graph.getEdgeSource(e.getEdge());
+			Country targetVertex = graph.getEdgeTarget(e.getEdge());
+			
+			if(!visit.containsKey(targetVertex) && visit.containsKey(sourceVertex))
+				visit.put(targetVertex, sourceVertex);
+			else if(!visit.containsKey(sourceVertex) && visit.containsKey(targetVertex)) 
+				visit.put(sourceVertex, targetVertex);
+		}
+
+		@Override
+		public void vertexFinished(VertexTraversalEvent<Country> arg0) {			
+		}
+
+		@Override
+		public void vertexTraversed(VertexTraversalEvent<Country> arg0) {			
+		}
+	}
 
 	private BordersDAO dao;
-	private Map<Integer, Country> countryIdMap;
 	private Graph<Country, DefaultEdge> graph;
+	private Map<Integer, Country> countryIdMap;
+	private Map<Country, Country> visit;
 
 	public Model() {
 		this.dao = new BordersDAO();
@@ -59,9 +98,27 @@ public class Model {
 		ConnectivityInspector<Country, DefaultEdge> inspector = new ConnectivityInspector<Country, DefaultEdge>(this.graph);
 		return inspector.connectedSets().size();
 	}
+	
+	public List<Country> getVisit(Country vertex) {
+		List<Country> result = new ArrayList<>();
+		this.visit = new HashMap<>();
+		
+		GraphIterator<Country, DefaultEdge> it = new BreadthFirstIterator<>(this.graph, vertex);
+		it.addTraversalListener(new Model.EdgeTraversalListener());
+		
+		visit.put(vertex, null);		
+		while(it.hasNext()) {
+			result.add(it.next());
+		}
+		
+		return result;
+	}
 
 	public Set<Country> getVertexSet() {
 		return this.graph.vertexSet();
 	}
 	
+	public Map<Integer, Country> getCountryIdMap() {
+		return this.countryIdMap;
+	}
 }
